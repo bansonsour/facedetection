@@ -5,9 +5,6 @@ import android.graphics.BitmapFactory
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import kotlinx.android.synthetic.main.activity_main.*
-import org.dp.facedetection.Face
-import org.dp.facedetection.FaceDetect
-import org.dp.facedetection.R
 import org.opencv.android.Utils
 import org.opencv.core.MatOfRect
 import org.opencv.core.Scalar
@@ -34,6 +31,7 @@ class MainActivity : AppCompatActivity() {
         val FACE_RECT_THICKNESS = 3
         val startTime = System.currentTimeMillis()
         val facesArray = facedetect(mat.nativeObjAddr)
+        str = str + "face ${mat.nativeObjAddr}\n"
         str = str + "face num = ${facesArray.size}\n"
         for (face in facesArray) {
             Imgproc.rectangle(mat, face.faceRect, FACE_RECT_COLOR, FACE_RECT_THICKNESS)

@@ -1,4 +1,4 @@
-package org.dp.facedetection.java;
+package org.dp.facedetection;
 
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
@@ -9,9 +9,6 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import org.dp.facedetection.Face;
-import org.dp.facedetection.FaceDetect;
-import org.dp.facedetection.R;
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
@@ -23,12 +20,11 @@ import org.opencv.imgproc.Imgproc;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.List;
 
 /**
  * Created by caydencui on 2019/4/16.
  */
-public class MainActivity extends AppCompatActivity {
+public class FaceDetectActivity extends AppCompatActivity {
 
     private ImageView imageView;
     private TextView textView;
@@ -46,33 +42,35 @@ public class MainActivity extends AppCompatActivity {
         }
 
     }
-    Mat matOfRect = null;
+    Mat mat = null;
     private void  testFacedetect(){
         imageView=(ImageView)findViewById(R.id.imageView);
         textView=(TextView)findViewById(R.id.textView);
         try{
-            Bitmap bitmap=getAssetsBitmap("test11.jpeg");
-            String str = "image size = "+bitmap.getWidth()+"x"+bitmap.getHeight()+"\n";
-            imageView.setImageBitmap(bitmap);
+            Bitmap bmp=getAssetsBitmap("test11.jpeg");
+            String str = "image size = "+bmp.getWidth()+"x"+bmp.getHeight()+"\n";
+            imageView.setImageBitmap(bmp);
             Log.i("OpenCV", str);
-            Bitmap bitmap1=bitmap.copy(bitmap.getConfig(),true);
-            Utils.bitmapToMat(bitmap1,matOfRect);
+            Bitmap bmp2=bmp.copy(bmp.getConfig(),true);
+            Utils.bitmapToMat(bmp,mat);
+            Log.i("OpenCV1", ""+(mat==null?true:false));
             Log.i("OpenCV1", str);
             Scalar FACE_RECT_COLOR =new Scalar(255.0, 0.0, 0.0);
             int FACE_RECT_THICKNESS = 3;
             long startTime = System.currentTimeMillis();
             Log.i("OpenCV1", ""+startTime);
-            Face [] faces= FaceDetect.facedetect(matOfRect.dataAddr());
+            FaceDetectUtils faceDetect=new FaceDetectUtils();
+            Log.i("OpenCV21", ""+mat.getNativeObjAddr());
+            Face [] faces= faceDetect.facedetect(mat.getNativeObjAddr());
             str = str + "face num = "+faces.length+"\n";
             Log.i("OpenCV1", ""+str);
             for (Face face : faces) {
-                Imgproc.rectangle(matOfRect, face.faceRect, FACE_RECT_COLOR, FACE_RECT_THICKNESS);
+                Imgproc.rectangle(mat, face.faceRect, FACE_RECT_COLOR, FACE_RECT_THICKNESS);
             }
-
             str = str + "detectTime = "+(System.currentTimeMillis()-startTime)+"ms\n";
             Log.i("OpenCV", str);
-            Utils.matToBitmap(matOfRect, bitmap1);
-            imageView.setImageBitmap(bitmap1);
+            Utils.matToBitmap(mat, bmp2);
+            imageView.setImageBitmap(bmp2);
             textView.setText(str);
         }catch (Exception e){
             e.printStackTrace();
@@ -87,7 +85,7 @@ public class MainActivity extends AppCompatActivity {
                 case LoaderCallbackInterface.SUCCESS:
                 {
                     Log.i("OpenCV", "OpenCV loaded successfully");
-                    matOfRect=new MatOfRect();
+                    mat=new MatOfRect();
                     testFacedetect();
                 } break;
                 default:
