@@ -12,6 +12,6 @@ public class FaceDetect {
         System.loadLibrary("facedetection");
     }
 
-    public static native List<Face> facedetect(Long matAddr);
+    public static native Face[] facedetect(Long matAddr);
 
 }

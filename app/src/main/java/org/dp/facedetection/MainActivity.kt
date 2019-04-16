@@ -1,4 +1,4 @@
-package org.dp.facedetection.kotlin
+package org.dp.facedetection
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -6,6 +6,7 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import kotlinx.android.synthetic.main.activity_main.*
 import org.dp.facedetection.Face
+import org.dp.facedetection.FaceDetect
 import org.dp.facedetection.R
 import org.opencv.android.Utils
 import org.opencv.core.MatOfRect
