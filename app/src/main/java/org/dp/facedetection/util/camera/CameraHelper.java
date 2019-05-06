@@ -47,6 +47,7 @@ public class CameraHelper implements Camera.PreviewCallback {
         } else if (isMirror) {
             throw new RuntimeException("mirror is effective only when the preview is on a textureView");
         }
+
     }
 
     public void init() {
@@ -80,6 +81,7 @@ public class CameraHelper implements Camera.PreviewCallback {
             if (mCamera == null) {
                 mCamera = Camera.open(mCameraId);
             }
+            DLog.d(TAG,"rotation:"+rotation);
             displayOrientation = getCameraOri(rotation);
             mCamera.setDisplayOrientation(displayOrientation);
             try {
@@ -95,8 +97,8 @@ public class CameraHelper implements Camera.PreviewCallback {
                 parameters.setPreviewSize(previewSize.width, previewSize.height);
 //                setOptimalPreviewSize(parameters, previewSize.width, previewSize.height);
                 //预览方向设置 by cayden
-                parameters.setRotation(180);
-                parameters.set("orientation", "portrait");
+//                parameters.setRotation(0);
+//                parameters.set("orientation", "portrait");
                 //对焦模式设置
                 List<String> supportedFocusModes = parameters.getSupportedFocusModes();
                 if (supportedFocusModes != null && supportedFocusModes.size() > 0) {
@@ -115,7 +117,6 @@ public class CameraHelper implements Camera.PreviewCallback {
                 } else {
                     mCamera.setPreviewDisplay(((SurfaceView) previewDisplayView).getHolder());
                 }
-                mCamera.setDisplayOrientation(90);
                 mCamera.setPreviewCallback(this);
                 mCamera.startPreview();
                 if (cameraListener != null) {
@@ -236,8 +237,8 @@ public class CameraHelper implements Camera.PreviewCallback {
             DLog.d(TAG,preview_width + ":" + preview_height + ":" + surface_width + ":" + surface_height + ":" + this.sw + ":" + this.sh);
         }
 
-//        cameraParams.setPreviewSize((int) surface_width, (int) surface_height);
-        cameraParams.setPreviewSize((int)preview_width,(int)preview_height);
+        cameraParams.setPreviewSize((int) surface_width, (int) surface_height);
+//        cameraParams.setPreviewSize((int)preview_width,(int)preview_height);
     }
     /**
      * 获取最优的预览Size
@@ -339,7 +340,14 @@ public class CameraHelper implements Camera.PreviewCallback {
     @Override
     public void onPreviewFrame(byte[] nv21, Camera camera) {
         if (cameraListener != null) {
-            cameraListener.onPreview(nv21, camera);
+
+            try {
+                cameraListener.onPreview(nv21, camera);
+                Thread.sleep(100);
+            }catch (Exception e){
+
+            }
+
         }
     }
 

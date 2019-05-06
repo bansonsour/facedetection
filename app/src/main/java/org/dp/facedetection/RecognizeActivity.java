@@ -1,20 +1,17 @@
 package org.dp.facedetection;
 
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
-import android.graphics.Point;
+import android.graphics.*;
 import android.hardware.Camera;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import org.dp.facedetection.util.Constant;
-import org.dp.facedetection.util.DLog;
-import org.dp.facedetection.util.DrawHelper;
-import org.dp.facedetection.util.NV21ToBitmap;
+import org.dp.facedetection.util.*;
 import org.dp.facedetection.util.camera.CameraHelper;
 import org.dp.facedetection.util.camera.CameraListener;
 import org.dp.facedetection.widget.FaceRectView;
@@ -25,6 +22,10 @@ import org.opencv.android.Utils;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfRect;
 import org.opencv.core.Scalar;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 /**
  * Created by caydencui on 2019/5/5.
@@ -41,6 +42,7 @@ public class RecognizeActivity extends AppCompatActivity {
     private static final int ACTION_REQUEST_PERMISSIONS = 0x001;
 
     private Mat mat = null;
+    private FaceDetectUtils faceDetect=new FaceDetectUtils();
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -56,6 +58,9 @@ public class RecognizeActivity extends AppCompatActivity {
         }
         init();
         initCamera();
+        if (cameraHelper != null) {
+            cameraHelper.start();
+        }
     }
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
@@ -84,6 +89,40 @@ public class RecognizeActivity extends AppCompatActivity {
         faceRectView = findViewById(R.id.face_rect_view);
     }
 
+    boolean isSave=true;
+    private void saveImage(int index,byte[] nv21,int width,int height){
+        //保存一张照片
+        String fileName = "IMG_" + String.valueOf(index) + ".jpg";  //jpeg文件名定义
+        File sdRoot = Environment.getExternalStorageDirectory();    //系统路径
+        String dir = "/jpeg/";   //文件夹名
+        File mkDir = new File(sdRoot, dir);
+        if (!mkDir.exists())
+        {
+            mkDir.mkdirs();   //目录不存在，则创建
+        }
+
+
+        File pictureFile = new File(sdRoot, dir + fileName);
+        if (!pictureFile.exists()) {
+            try {
+                pictureFile.createNewFile();
+
+                FileOutputStream filecon = new FileOutputStream(pictureFile);
+
+                YuvImage image = new YuvImage(nv21, ImageFormat.NV21, width, height, null);   //将NV21 data保存成YuvImage
+                //图像压缩
+                image.compressToJpeg(
+                        new Rect(0, 0, image.getWidth(), image.getHeight()),
+                        70, filecon);   // 将NV21格式图片，以质量70压缩成Jpeg，并得到JPEG数据流
+                Log.d(TAG,"success:"+(dir+fileName)+",width:"+width+",height:"+height);
+            }catch (IOException e)
+            {
+                e.printStackTrace();
+            }
+        }
+
+    }
+
 
     private void initCamera() {
         DisplayMetrics metrics = new DisplayMetrics();
@@ -98,29 +137,42 @@ public class RecognizeActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onPreview(byte[] nv21, Camera camera) {
+            public void onPreview(final byte[] nv21, Camera camera) {
                 if (faceRectView != null) {
                     faceRectView.clearFaceInfo();
                 }
 
-                /*将nv21转bitmap*/
-                NV21ToBitmap nv21ToBitmap=new NV21ToBitmap();
-                Bitmap bmp=nv21ToBitmap.nv21ToBitmap(nv21,previewSize.width,previewSize.height);
-                String str = "image size = "+bmp.getWidth()+"x"+bmp.getHeight()+"\n";
+                if(isSave){
+                    saveImage(1,nv21,previewSize.width,previewSize.height);
+                    isSave=false;
+                }
+//              new Thread(new Runnable() {
+//                  @Override
+//                  public void run() {
+                      /*将nv21转bitmap*/
+                      NV21ToBitmap nv21ToBitmap=new NV21ToBitmap();
+                      Bitmap bmp=nv21ToBitmap.nv21ToBitmap(nv21,previewSize.width,previewSize.height);
+                      bmp= ImageUtil.getRotateBitmap(bmp,90);
+                      String str = "image size = "+bmp.getWidth()+"x"+bmp.getHeight()+"\n";
+                      Log.i("OpenCV", str);
+//                      Bitmap bmp2=bmp.copy(bmp.getConfig(),true);
+                      Utils.bitmapToMat(bmp,mat);
+                      Log.i("OpenCV1", ""+(mat==null?true:false));
+                      long startTime = System.currentTimeMillis();
+                      Log.i("OpenCV21", ""+mat.getNativeObjAddr());
+                      Face [] faces= faceDetect.facedetect(mat.getNativeObjAddr());
+                      str = str + "detectTime = "+(System.currentTimeMillis()-startTime)+"ms\n";
+                      DLog.d(TAG,str);
+                      if(null!=faces){
+                          str = str + "face num = "+faces.length+"\n";
+                      }
+                      if(bmp!=null){
+                          bmp.recycle();
+                          bmp=null;
+                      }
+//                  }
+//              }).start();
 
-                Log.i("OpenCV", str);
-                Bitmap bmp2=bmp.copy(bmp.getConfig(),true);
-                Utils.bitmapToMat(bmp,mat);
-                Log.i("OpenCV1", ""+(mat==null?true:false));
-                Log.i("OpenCV1", str);
-                Scalar FACE_RECT_COLOR =new Scalar(255.0, 0.0, 0.0);
-                int FACE_RECT_THICKNESS = 3;
-                long startTime = System.currentTimeMillis();
-                Log.i("OpenCV1", ""+startTime);
-                FaceDetectUtils faceDetect=new FaceDetectUtils();
-                Log.i("OpenCV21", ""+mat.getNativeObjAddr());
-                Face [] faces= faceDetect.facedetect(mat.getNativeObjAddr());
-                str = str + "face num = "+faces.length+"\n";
             }
 
             @Override
