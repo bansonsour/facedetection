@@ -342,10 +342,11 @@ public class CameraHelper implements Camera.PreviewCallback {
         if (cameraListener != null) {
 
             try {
-                cameraListener.onPreview(nv21, camera);
-                Thread.sleep(100);
+                synchronized (this){
+                    cameraListener.onPreview(nv21, camera);
+                }
             }catch (Exception e){
-
+                e.printStackTrace();
             }
 
         }

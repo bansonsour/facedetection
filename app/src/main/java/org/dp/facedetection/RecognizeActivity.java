@@ -11,6 +11,7 @@ import android.view.View;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import org.dp.facedetection.model.DrawInfo;
 import org.dp.facedetection.util.*;
 import org.dp.facedetection.util.camera.CameraHelper;
 import org.dp.facedetection.util.camera.CameraListener;
@@ -26,6 +27,8 @@ import org.opencv.core.Scalar;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by caydencui on 2019/5/5.
@@ -42,7 +45,8 @@ public class RecognizeActivity extends AppCompatActivity {
     private static final int ACTION_REQUEST_PERMISSIONS = 0x001;
 
     private Mat mat = null;
-    private FaceDetectUtils faceDetect=new FaceDetectUtils();
+    private FaceDetectUtils faceDetect = new FaceDetectUtils();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -62,26 +66,28 @@ public class RecognizeActivity extends AppCompatActivity {
             cameraHelper.start();
         }
     }
+
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
         public void onManagerConnected(int status) {
             switch (status) {
-                case LoaderCallbackInterface.SUCCESS:
-                {
+                case LoaderCallbackInterface.SUCCESS: {
                     Log.i("OpenCV", "OpenCV loaded successfully");
-                    mat=new MatOfRect();
+                    mat = new MatOfRect();
 
-                } break;
-                default:
-                {
+                }
+                break;
+                default: {
                     super.onManagerConnected(status);
-                } break;
+                }
+                break;
             }
         }
     };
-    private void init(){
-        if(!checkPermissions(Constant.NEEDED_PERMISSIONS)){
-            ActivityCompat.requestPermissions(this,Constant.NEEDED_PERMISSIONS,ACTION_REQUEST_PERMISSIONS);
+
+    private void init() {
+        if (!checkPermissions(Constant.NEEDED_PERMISSIONS)) {
+            ActivityCompat.requestPermissions(this, Constant.NEEDED_PERMISSIONS, ACTION_REQUEST_PERMISSIONS);
             return;
         }
         previewView = findViewById(R.id.texture_preview);
@@ -89,15 +95,15 @@ public class RecognizeActivity extends AppCompatActivity {
         faceRectView = findViewById(R.id.face_rect_view);
     }
 
-    boolean isSave=true;
-    private void saveImage(int index,byte[] nv21,int width,int height){
+    boolean isSave = true;
+
+    private void saveImage(int index, byte[] nv21, int width, int height) {
         //保存一张照片
         String fileName = "IMG_" + String.valueOf(index) + ".jpg";  //jpeg文件名定义
         File sdRoot = Environment.getExternalStorageDirectory();    //系统路径
         String dir = "/jpeg/";   //文件夹名
         File mkDir = new File(sdRoot, dir);
-        if (!mkDir.exists())
-        {
+        if (!mkDir.exists()) {
             mkDir.mkdirs();   //目录不存在，则创建
         }
 
@@ -114,9 +120,8 @@ public class RecognizeActivity extends AppCompatActivity {
                 image.compressToJpeg(
                         new Rect(0, 0, image.getWidth(), image.getHeight()),
                         70, filecon);   // 将NV21格式图片，以质量70压缩成Jpeg，并得到JPEG数据流
-                Log.d(TAG,"success:"+(dir+fileName)+",width:"+width+",height:"+height);
-            }catch (IOException e)
-            {
+                Log.d(TAG, "success:" + (dir + fileName) + ",width:" + width + ",height:" + height);
+            } catch (IOException e) {
                 e.printStackTrace();
             }
         }
@@ -128,12 +133,12 @@ public class RecognizeActivity extends AppCompatActivity {
         DisplayMetrics metrics = new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getMetrics(metrics);
 
-        CameraListener cameraListener=new CameraListener() {
+        CameraListener cameraListener = new CameraListener() {
             @Override
             public void onCameraOpened(Camera camera, int cameraId, int displayOrientation, boolean isMirror) {
-                previewSize=camera.getParameters().getPreviewSize();
-                drawHelper=new DrawHelper(previewSize.width,previewSize.height,previewView.getWidth(),previewView.getHeight(),displayOrientation
-                        ,cameraId,isMirror);
+                previewSize = camera.getParameters().getPreviewSize();
+                drawHelper = new DrawHelper(previewSize.width, previewSize.height, previewView.getWidth(), previewView.getHeight(), displayOrientation
+                        , cameraId, isMirror);
             }
 
             @Override
@@ -142,34 +147,45 @@ public class RecognizeActivity extends AppCompatActivity {
                     faceRectView.clearFaceInfo();
                 }
 
-                if(isSave){
-                    saveImage(1,nv21,previewSize.width,previewSize.height);
-                    isSave=false;
+                if (isSave) {
+                    saveImage(1, nv21, previewSize.width, previewSize.height);
+                    isSave = false;
                 }
 //              new Thread(new Runnable() {
 //                  @Override
 //                  public void run() {
-                      /*将nv21转bitmap*/
-                      NV21ToBitmap nv21ToBitmap=new NV21ToBitmap();
-                      Bitmap bmp=nv21ToBitmap.nv21ToBitmap(nv21,previewSize.width,previewSize.height);
-                      bmp= ImageUtil.getRotateBitmap(bmp,90);
-                      String str = "image size = "+bmp.getWidth()+"x"+bmp.getHeight()+"\n";
-                      Log.i("OpenCV", str);
+                /*将nv21转bitmap*/
+                NV21ToBitmap nv21ToBitmap = new NV21ToBitmap();
+                Bitmap bmp = nv21ToBitmap.nv21ToBitmap(nv21, previewSize.width, previewSize.height);
+                bmp = ImageUtil.bitMapScale(bmp, 0.25f);
+                bmp = ImageUtil.getRotateBitmap(bmp, 90);
+                String str = "image size = " + bmp.getWidth() + "x" + bmp.getHeight() + "\n";
+                Log.i("OpenCV", str);
 //                      Bitmap bmp2=bmp.copy(bmp.getConfig(),true);
-                      Utils.bitmapToMat(bmp,mat);
-                      Log.i("OpenCV1", ""+(mat==null?true:false));
-                      long startTime = System.currentTimeMillis();
-                      Log.i("OpenCV21", ""+mat.getNativeObjAddr());
-                      Face [] faces= faceDetect.facedetect(mat.getNativeObjAddr());
-                      str = str + "detectTime = "+(System.currentTimeMillis()-startTime)+"ms\n";
-                      DLog.d(TAG,str);
-                      if(null!=faces){
-                          str = str + "face num = "+faces.length+"\n";
-                      }
-                      if(bmp!=null){
-                          bmp.recycle();
-                          bmp=null;
-                      }
+                Utils.bitmapToMat(bmp, mat);
+                Log.i("OpenCV1", "" + (mat == null ? true : false));
+                long startTime = System.currentTimeMillis();
+                Log.i("OpenCV21", "" + mat.getNativeObjAddr());
+                Face[] faces = faceDetect.facedetect(mat.getNativeObjAddr());
+                str = str + "detectTime = " + (System.currentTimeMillis() - startTime) + "ms\n";
+
+                if (null != faces) {
+                    str = str + "face num = " + faces.length + "\n";
+                    List<DrawInfo> drawInfoList = new ArrayList<>();
+                    for (int i = 0; i < faces.length; i++) {
+                        Face face = faces[i];
+                        org.opencv.core.Rect rect = face.faceRect;
+                        Rect rect1 = new Rect(rect.x*4, rect.y*4, rect.width*4, rect.height*4);
+                        DrawInfo drawInfo = new DrawInfo(rect1, "test");
+                        drawInfoList.add(drawInfo);
+                    }
+                    drawHelper.draw(faceRectView, drawInfoList);
+                }
+                DLog.d(TAG, str);
+                if (bmp != null) {
+                    bmp.recycle();
+                    bmp = null;
+                }
 //                  }
 //              }).start();
 
@@ -177,33 +193,34 @@ public class RecognizeActivity extends AppCompatActivity {
 
             @Override
             public void onCameraClosed() {
-                DLog.d(TAG,"onCameraClosed");
+                DLog.d(TAG, "onCameraClosed");
             }
 
             @Override
             public void onCameraError(Exception e) {
-                DLog.e(TAG,e.getMessage());
+                DLog.e(TAG, e.getMessage());
             }
 
             @Override
             public void onCameraConfigurationChanged(int cameraID, int displayOrientation) {
-                if(drawHelper!=null){
+                if (drawHelper != null) {
                     drawHelper.setCameraDisplayOrientation(displayOrientation);
                 }
             }
         };
 
-        cameraHelper=new CameraHelper.Builder()
-                .previewViewSize(new Point(previewView.getMeasuredWidth(),previewView.getMeasuredHeight()))
+        cameraHelper = new CameraHelper.Builder()
+                .previewViewSize(new Point(previewView.getMeasuredWidth(), previewView.getMeasuredHeight()))
                 .rotation(getWindowManager().getDefaultDisplay().getRotation())
                 .specificCameraId(cameraID != null ? cameraID : Camera.CameraInfo.CAMERA_FACING_FRONT)
-                .isMirror(false)
+                .isMirror(true)
                 .previewOn(previewView)
                 .cameraListener(cameraListener)
                 .build();
         cameraHelper.init();
 
     }
+
     private boolean checkPermissions(String[] neededPermissions) {
         if (neededPermissions == null || neededPermissions.length == 0) {
             return true;

@@ -17,6 +17,12 @@ public class DrawInfo {
         this.name = name;
     }
 
+    public DrawInfo(Rect rect, String name) {
+        this.rect = rect;
+
+        this.name = name;
+    }
+
     public String getName() {
         return name;
     }
